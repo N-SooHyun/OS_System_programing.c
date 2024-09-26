@@ -175,6 +175,63 @@ void File_HDD_main() {
 //4. i버튼 누를 시 입력모드 
 //5. esc버튼 누를 시 명령어모드
 
+typedef struct Copy_File_Memory {
+	int size;
+	int capacity;
+	char* carray;
+}Copy_File_Memory;
+
+void gotoxy(int x, int y) {
+	COORD coord;
+	coord.X = x;
+	coord.Y = y;
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+}
+
+void drawBorders(int width, int height) {
+	//상단 하단 경계
+	for (int i = 0; i < width; i++) {
+		gotoxy(i, 0);         // 상단 경계
+		printf("-");
+		gotoxy(i, height - 1); // 하단 경계
+		printf("-");
+	}
+	// 좌측 및 우측 경계 그리기
+	for (int i = 0; i < height; i++) {
+		gotoxy(0, i);         // 좌측 경계
+		printf("|");
+		gotoxy(width - 1, i); // 우측 경계
+		printf("|");
+	}
+	gotoxy(0, 0);  // 커서를 상단 좌측으로 이동
+}
+
+void display_FileArea(Copy_File_Memory* File_List) {
+	gotoxy(2, 2);
+	for (int i = 0; ; i++) {
+		printf("%c", File_List->carray[i]);
+		if (File_List->carray[i] == EOF)
+			break;
+	}	
+}
+
+void display_CommendArea() {
+	gotoxy(2, 25);
+	printf("\n<명령어 모드>\n");
+	printf("1.입력모드, 2.저장, 그 외 나가기  :  ");
+}
+
+void init_File_Memory_List(Copy_File_Memory* list) {
+	list->size = 0;
+	list->capacity = 1024; //초기 메모리할당양
+	list->carray = (char*)malloc(sizeof(char) * list->capacity);
+}
+
+void Add_File_Memory_List(Copy_File_Memory* list) {
+	list->capacity *= 2;
+	list->carray = (char*)realloc(list->carray, sizeof(char) * list->capacity);
+}
+
 int Win_Dir_Search(char *a, char *dir_list[]) {//window api를 이용한 파일 탐색
 	WIN32_FIND_DATAW findFileData;
 	HANDLE hFind = FindFirstFileA(a, &findFileData);
@@ -222,11 +279,59 @@ int Win_Dir_Search(char *a, char *dir_list[]) {//window api를 이용한 파일 탐색
 
 #define FILE_NAME_LEN 50
 
-void File_Sys_Input(FILE* pFile) {
+#define ESC 27
+#define UP_ARROW 72
+#define DOWN_ARROW 80
+#define LEFT_ARROW 75
+#define RIGHT_ARROW 77
 
+void set_Cursor_Position(int x, int y) {//입력모드 커서 움직이기
+	COORD pos = { x,y };
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
 }
 
-void File_Sys_Edit(FILE* pFile, char* fileName, int keyboard) {
+void File_Sys_Input(FILE* pFile, Copy_File_Memory* File_List) {
+	int keyboard;
+	int cursorX = 0 , cursorY = 0;
+	while (1) {
+		system("cls");
+		for (int i = 0; ; i++) {
+			printf("%c", File_List->carray[i]);
+			if (File_List->carray[i] == EOF)
+				break;
+		}
+		printf("\n<입력 모드>\n");
+		printf("명령어 모드로 나갈길 원할 시 ESC\n");
+		
+		while (1) {
+			set_Cursor_Position(cursorX, cursorY);
+			keyboard = _getch();
+			switch(keyboard){
+				case ESC:
+					return;
+				case UP_ARROW:
+					if (cursorY > 0)cursorY--;
+					break;
+				case DOWN_ARROW:
+					cursorY++;
+					break;
+				case LEFT_ARROW:
+					if (cursorX > 0) cursorX--;
+					break;
+				case RIGHT_ARROW:
+					cursorX++;
+					break;
+			}
+		}
+	}
+}
+
+void File_Sys_Edit(FILE* pFile, char* fileName, int keyboard, Copy_File_Memory* File_List) {
+	int width = 150;
+	int height = 25;
+	COORD bufferSize = { width, height };
+	SetConsoleScreenBufferSize(GetStdHandle(STD_OUTPUT_HANDLE), bufferSize);
+
 	char NameFile[FILE_NAME_LEN];
 	strcpy_s(NameFile, sizeof(char) * FILE_NAME_LEN, "FileSystem\\");
 	strcat_s(NameFile, sizeof(char) * FILE_NAME_LEN, fileName);
@@ -242,24 +347,44 @@ void File_Sys_Edit(FILE* pFile, char* fileName, int keyboard) {
 		default : //종료
 			break;
 	}
-	char fileBoard[1024];
 	char c;
-	for (int i = 0; i < 1024; i++) {
-		fileBoard[i] = fgetc(pFile);
-		if (fileBoard[i] == EOF)
+	//메모리에 파일 덮어 씌우는 과정
+	for (int i = 0;; i++) {
+		if (File_List->capacity <= i) {
+			Add_File_Memory_List(File_List);
+		}
+		File_List->carray[i] = fgetc(pFile);
+		if (File_List->carray[i] == EOF)
 			break;
 	}
-	system("cls");
-	for (int i = 0; i < 1024; i++) {
-		printf("%c", fileBoard[i]);
-		if (fileBoard[i] == EOF)
-			break;
+
+	while (1) {
+		system("cls");
+		//메모리에 덮어씌워진 파일 출력함
+		// 경계 그리기
+		drawBorders(width, height);
+		// 파일 영역 및 상태 영역 출력
+		display_FileArea(File_List);
+		display_CommendArea();
+		scanf_s("%d", &keyboard);
+		switch (keyboard) {
+			case 1:	//파일 입력모드
+				File_Sys_Input(pFile, File_List);
+				break;
+			case 2: //파일 저장
+				break;
+			default : //파일에서 나가기
+				break;
+		}
 	}
-	scanf_s("%d", &keyboard);
+
+
 	
 }
 
 void File_Sys_main() {
+	Copy_File_Memory File_Memory;
+	init_File_Memory_List(&File_Memory);
 	char current_dir[1024];
 	char* list_dir[100];
 	for (int i = 0; i < 100; i++) {
@@ -305,7 +430,7 @@ void File_Sys_main() {
 					printf("목록에 존재하지 않는 파일입니다.\n\n");
 					break;
 				}
-				File_Sys_Edit(pFile, list_dir[selectKeyboard], 1);
+				File_Sys_Edit(pFile, list_dir[selectKeyboard], 1, &File_Memory);
 				break;
 			case 2:
 				printf("만들고 싶은 파일 입력(기존에 있는 파일과 이름이 겹치면 안됨) : ");
@@ -325,24 +450,7 @@ void File_Sys_main() {
 
 	
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+//너무 어려워서 포기
 
 
 
@@ -350,48 +458,111 @@ void File_Sys_main() {
 	그럼 이 파일시스템이 등장하고부터는 어떤 데이터든 파일의 개념으로써 관리를 진행해왔다.
 	간단한 데이터라도 파일로써 관리를 진행해왔고 이러한 방식은 시간이 지날수록 비효율적이게 되었다.
 	이 불편한 점들을 알아보겠다.
+
+	회사의 직원을 관리하는 파일을 만든다고 가정
+	1. 직원정보 - 이름, 생년월일, 연락처, 주소, 입사일, 직위 및 부서
+	2. 근무기록 - 출근시간,퇴근시간,근무일수,지각 및 결근 기록, 초과근무
+	3. 급여정보 - 기본급, 수당, 세금 공제 내역, 연말정산 정보, 보너스 및 인센티브
+	4. 평가기록 - 평가주기, 평가점수, 상사 피드백, 목표달성여부, 교육 및 개발 필요사항
+	5. 휴가신청 - 휴가 유형, 시작일 및 종료일, 신청날짜, 승인 상태, 사용가능 휴가 일수
 */
-/*
-void File_System_Staff_Information(FILE* file) {
-	file = fopen("Compony_File\\Staff_Information.txt", "w");
+typedef struct File_ArrayList {
+	int capacity;
+	char* carray;
+}File_ArrayList;
+
+void File_ArrayList_init(File_ArrayList* file_board, int keyboard) {
+	switch (keyboard) {
+		case 1:	//초기화
+			file_board->capacity = 1024;
+			file_board->carray = (char*)malloc(sizeof(char) * file_board->capacity);
+			break;
+		case 2:	//메모리 더 할당
+			file_board->capacity *= 2;
+			file_board->carray = (char*)realloc(file_board->carray, sizeof(char) * file_board->capacity);
+			break;
+	}
 }
 
-void File_System_Work_Record(FILE* file) {
-	file = fopen("Compony_File\\Work_Record.txt", "w");
+//파일 생성
+FILE* File_System_Create_File(FILE** pFile, char newFile[]) {
+	char FileName[100];
+	strcpy_s(FileName, sizeof(char) * 100, "Compony_File\\");
+	strcat_s(FileName, sizeof(char) * 100, newFile);
+	//파일의 존재 여부 확인 "r" 읽기
+	fopen_s(pFile, FileName, "r");
+	
+	//파일이 완전히 없는 경우 새로 생성
+	if (*pFile == NULL) {
+		fopen_s(pFile, FileName, "w");
+		printf("파일이 업어요");
+	}
+
+	return *pFile;
 }
 
-void File_System_Salary_Information(FILE* file) {
-	file = fopen("Compony_File\\Salary_Information.txt", "w");
+
+//파일 읽어오기
+void File_System_Read_File(FILE** pFile, char readFile[], File_ArrayList* file_board) {
+	char FileName[100];
+	char c;
+	strcpy_s(FileName, sizeof(char) * 100, "Compony_File\\");
+	strcat_s(FileName, sizeof(char) * 100, readFile);
+	fopen_s(pFile, FileName, "r");
+	
+	//파일 메모리에 복사
+	for (int i = 0; ; i++) {
+		if (i >= file_board->capacity)
+			File_ArrayList_init(file_board, 2);
+		c = fgetc(*pFile);
+		file_board->carray[i] = c;
+		if (c == EOF)
+			break;
+	}
+
+	//파일 출력
+	for (int i = 0; ; i++) {
+		printf("%c", file_board->carray[i]);
+		if (file_board->carray[i] == EOF)break;
+	}
 }
 
-void File_System_Evaluation_Record(FILE* file) {
-	file = fopen("Compony_File\\Evaluation_Record.txt", "w");
+//파일 작성(파일 읽어오고 난 이후에 작성해야함)
+void File_System_Write_File(FILE** pFile, char writeFile[], File_ArrayList* file_board) {
+	printf("파일 작성\n");
+	char c;
+	for (int i = 0; ; i++) {
+		c = getchar();
+		if (c == EOF) break;
+		else if (c == ' ') c = '|';
+		file_board->carray[i] = c;
+	}
 }
 
-void File_System_Vacation_Request(FILE* file) {
-	file = fopen("Compony_File\\Vacation_Request.txt", "w");
+void File_System_Compony_main() {
+	FILE* pFile = NULL;
+	FILE* pFile_List[5];
+	File_ArrayList file_board;
+	File_ArrayList_init(&file_board, 1);//초기화
+	//회사 관리 파일 생성
+	pFile_List[0] = File_System_Create_File(&pFile, "Employee information");	//직원정보
+	pFile_List[1] = File_System_Create_File(&pFile, "work record");				//근무기록
+	pFile_List[2] = File_System_Create_File(&pFile, "salary information");		//급여정보
+	pFile_List[3] = File_System_Create_File(&pFile, "Evaluation record");		//평가기록
+	pFile_List[4] = File_System_Create_File(&pFile, "Request for vacation");	//휴가신청
+	for (int i = 0; i < 5; i++) {
+		fclose(pFile_List[i]);
+	}
+
+	//파일 읽기
+	File_System_Read_File(&pFile, "Employee information", &file_board);
+
+	//파일 작성
+	//File_System_Write_File(&pFile, "Employee information", &file_board);
+
 }
-*/
 
 //1. 중복성 문제점
-void File_System_Duplicate_main() {
-	//회사의 직원을 관리하는 파일을 만든다고 가정해보겠다.
-	//지원정보, 근무기록, 급여정보, 평가기록, 휴가신청 총 5개의 파일을 만들어보겠다.
-	//직원정보 - 이름, 생년월일, 연락처, 주소, 입사일, 직위 및 부서
-	//근무기록 - 출근시간,퇴근시간,근무일수,지각 및 결근 기록, 초과근무
-	//급여정보 - 기본급, 수당, 세금 공제 내역, 연말정산 정보, 보너스 및 인센티브
-	//평가기록 - 평가주기, 평가점수, 상사 피드백, 목표달성여부, 교육 및 개발 필요사항
-	//휴가신청 - 휴가 유형, 시작일 및 종료일, 신청날짜, 승인 상태, 사용가능 휴가 일수
-	FILE* Staff_Information;
-	FILE* Work_Record;
-	FILE* Salary_Information;
-	FILE* Evaluation_Record;
-	FILE* Vacation_Request;
-
-	/*Staff_Information = fopen("Compony_File\\Staff_Information.txt", "w");
-	Work_Record = fopen("Compony_File\\Work_Record.txt", "w");
-	Salary_Information = fopen("Compony_File\\Salary_Information.txt", "w");
-	Evaluation_Record = fopen("Compony_File\\Evaluation_Record.txt", "w");
-	Vacation_Request = fopen("Compony_File\\Vacation_Request.txt", "w");*/
-
+void File_System_Duplicate() {
+	
 }

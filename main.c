@@ -11,36 +11,11 @@
 void main() {
 	//File_Tape_main();
 	//File_HDD_main();
-
-	File_Sys_main();
-
 	//win_dir_main();
 
-	
+	File_System_Compony_main();
 
 	
-	
-	/*strcpy_s(fileName, sizeof(char) * FILE_NAME_LEN, "FileSystem\\");
-	i = strnlen_s(fileName, FILE_NAME_LEN);
-
-	while ((c = getchar()) != '\n') {
-		if (i >= FILE_NAME_LEN) {
-			printf("파일명이 너무 큽니다. (50자)");
-			break;
-		}
-		fileName[i] = c;
-		i++;
-	}
-	fileName[i] = '\0';
-
-	fopen_s(&pFile, &fileName, "r");
-
-	if (pFile == NULL)
-		fopen_s(&pFile, &fileName, "w");
-
-	printf("%p\n", pFile);
-	printf("%p\n", *pFile);*/
-
 	
 
 }
