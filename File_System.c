@@ -168,7 +168,7 @@ void File_HDD_main() {
 	C언어에서 제공하는 stdio.h파일에 있는 FILE 입출력 시스템은 OS에게 직접 요청을 하여 HDD혹은 SSD에 파일의 주소를 받아와서 사용하는 형식이다.
 
 */
-
+/*
 //1. 명령문 받기 vi test
 //2. test라는 파일 있는지 확인 후 없으면 생성 있으면 파일 열기
 //3. Edit 편집기에서 파일을 열거나 생성 명령어 모드로 처음 진행
@@ -394,13 +394,13 @@ void File_Sys_main() {
 	strcpy_s(current_dir, sizeof(char) * 1024, "C:\\Users\\NSH\\Documents\\Visual_studio_pro\\OS_System_programing.c\\FileSystem\\*");
 	fileNum = Win_Dir_Search(current_dir, list_dir);
 
-	/*
-	for (int i = 1; i <=100; i++) {
-		if (list_dir[i] == NULL)
-			break;
-		printf("%d. file : %s\n", i, list_dir[i]);
-	}
-	*/
+	
+	//	for (int i = 1; i <=100; i++) {
+	//		if (list_dir[i] == NULL)
+	//			break;
+	//		printf("%d. file : %s\n", i, list_dir[i]);
+	//	}
+	
 
 	char fileName[FILE_NAME_LEN];
 	char c;
@@ -451,7 +451,7 @@ void File_Sys_main() {
 	
 }
 //너무 어려워서 포기
-
+*/
 
 
 /*
@@ -484,23 +484,26 @@ void File_ArrayList_init(File_ArrayList* file_board, int keyboard) {
 	}
 }
 
-//파일 생성
+//파일 새로 생성
 FILE* File_System_Create_File(FILE** pFile, char newFile[]) {
 	char FileName[100];
 	strcpy_s(FileName, sizeof(char) * 100, "Compony_File\\");
 	strcat_s(FileName, sizeof(char) * 100, newFile);
+	
 	//파일의 존재 여부 확인 "r" 읽기
 	fopen_s(pFile, FileName, "r");
 	
 	//파일이 완전히 없는 경우 새로 생성
 	if (*pFile == NULL) {
 		fopen_s(pFile, FileName, "w");
-		printf("파일이 업어요");
+	}
+	else {	//파일이 존재하는 경우
+		printf("%s 파일이 이미 존재합니다.\n", newFile); 
+		return NULL;
 	}
 
 	return *pFile;
 }
-
 
 //파일 읽어오기
 void File_System_Read_File(FILE** pFile, char readFile[], File_ArrayList* file_board) {
@@ -509,6 +512,11 @@ void File_System_Read_File(FILE** pFile, char readFile[], File_ArrayList* file_b
 	strcpy_s(FileName, sizeof(char) * 100, "Compony_File\\");
 	strcat_s(FileName, sizeof(char) * 100, readFile);
 	fopen_s(pFile, FileName, "r");
+
+	if (*pFile == NULL) {
+		printf("%s 파일이 없습니다.\n",readFile);
+		return;
+	}
 	
 	//파일 메모리에 복사
 	for (int i = 0; ; i++) {
@@ -520,21 +528,87 @@ void File_System_Read_File(FILE** pFile, char readFile[], File_ArrayList* file_b
 			break;
 	}
 
-	//파일 출력
+	//기존 파일 출력
+	printf("기존 파일 %s 내용\n",readFile);
 	for (int i = 0; ; i++) {
 		printf("%c", file_board->carray[i]);
 		if (file_board->carray[i] == EOF)break;
 	}
+	printf("\n");
+
+	fclose(*pFile);
 }
 
-//파일 작성(파일 읽어오고 난 이후에 작성해야함)
+//파일 신규작성(파일은 있으나 내용이 없어서 새로 작성할 경우)
 void File_System_Write_File(FILE** pFile, char writeFile[], File_ArrayList* file_board) {
-	printf("파일 작성\n");
+	char FileName[100];
 	char c;
+	strcpy_s(FileName, sizeof(char) * 100, "Compony_File\\");
+	strcat_s(FileName, sizeof(char) * 100, writeFile);
+	fopen_s(pFile, FileName, "w");
+	//printf("%s\n", FileName);
+	printf("%s 파일 작성(ESC 종료)\n",writeFile);
+	for (int i = 0; i!=-1000; i++) {
+		c = _getch();
+
+		switch (c) {
+			case 8:	//백스페이스
+				i--;
+				printf("\b \b");
+				file_board->carray[i] = ' ';
+				i--;
+				break;
+			case 13: //엔터
+				printf("\n");
+				file_board->carray[i] = '\n';
+				break;
+			case 32: //공백
+				printf(" ");
+				file_board->carray[i] = '|';
+				break;
+			case 27: //ESC종료
+				file_board->carray[i] = '\0';
+				i = -1001;
+				break; 
+			default :
+				printf("%c", c);
+				file_board->carray[i] = c;
+				break;
+		}
+	}
+	//실제 파일에 옮기는 작업
 	for (int i = 0; ; i++) {
-		c = getchar();
-		if (c == EOF) break;
-		else if (c == ' ') c = '|';
+		if (file_board->carray[i] == '\0') {
+			fputc(file_board->carray[i], *pFile);
+			break;
+		}
+		fputc(file_board->carray[i], *pFile);
+	}
+	printf("\n파일 작성 완료\n");
+	printf("작성 된 파일 \n");
+	for (int i = 0; ; i++) {
+		c = file_board->carray[i];
+		printf("%c", c);
+		if (c == '\0')break;
+	}
+	printf("\n");
+	fclose(*pFile);
+}
+
+//기존 파일 수정
+void File_System_Update_File(FILE** pFile, char updateFile[], File_ArrayList* file_board) {
+	char FileName[100];
+	char c;
+	strcpy_s(FileName, sizeof(char) * 100, "Compony_File\\");
+	strcat_s(FileName, sizeof(char) * 100, updateFile);
+	fopen_s(pFile, FileName, "r");	//일단 읽어오기
+
+	for (int i = 0; ; i++) {
+		c = fgetc(pFile);
+		if (c == EOF) {
+			file_board->carray[i] = '\0';
+			break;
+		}
 		file_board->carray[i] = c;
 	}
 }
@@ -551,14 +625,23 @@ void File_System_Compony_main() {
 	pFile_List[3] = File_System_Create_File(&pFile, "Evaluation record");		//평가기록
 	pFile_List[4] = File_System_Create_File(&pFile, "Request for vacation");	//휴가신청
 	for (int i = 0; i < 5; i++) {
-		fclose(pFile_List[i]);
+		if (pFile_List[i] != NULL)
+			fclose(pFile_List[i]);	//파일생성 스트림 닫아주기
 	}
 
-	//파일 읽기
+	//기존 파일 읽기
 	File_System_Read_File(&pFile, "Employee information", &file_board);
 
-	//파일 작성
-	//File_System_Write_File(&pFile, "Employee information", &file_board);
+	/*
+	//파일 내용 신규 작성
+	File_System_Write_File(&pFile, "Employee information", &file_board);
+	File_System_Write_File(&pFile, "work record", &file_board);
+	File_System_Write_File(&pFile, "salary information", &file_board);
+	File_System_Write_File(&pFile, "Evaluation record", &file_board);
+	File_System_Write_File(&pFile, "Request for vacation", &file_board);
+	*/
+
+	//파일 내용 수정
 
 }
 
