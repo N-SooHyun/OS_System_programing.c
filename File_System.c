@@ -595,22 +595,203 @@ void File_System_Write_File(FILE** pFile, char writeFile[], File_ArrayList* file
 	fclose(*pFile);
 }
 
+//인라인 함수
+inline char* file_words_add(int* maximum, char* change_file_words) {
+	*maximum *= 2;
+	char* new_words = (char*)realloc(change_file_words, sizeof(char) * *maximum);
+	if (new_words == NULL) {
+		printf("메모리 할당 실패");
+		exit(1);
+	}
+	return new_words;
+}
+
 //기존 파일 수정
 void File_System_Update_File(FILE** pFile, char updateFile[], File_ArrayList* file_board) {
+	//1.행열로 파싱 쪼개기 2.특정문자열수정하기 3.행열다시합치기	
 	char FileName[100];
 	char c;
+	int selectNum;
 	strcpy_s(FileName, sizeof(char) * 100, "Compony_File\\");
 	strcat_s(FileName, sizeof(char) * 100, updateFile);
 	fopen_s(pFile, FileName, "r");	//일단 읽어오기
 
 	for (int i = 0; ; i++) {
-		c = fgetc(pFile);
+		c = fgetc(*pFile);
 		if (c == EOF) {
 			file_board->carray[i] = '\0';
 			break;
 		}
 		file_board->carray[i] = c;
 	}
+	//1
+	//행의 개수 부터 파싱
+	int max_line_count = 1024;
+	long long* row_line = (long long*)malloc(sizeof(long long) * max_line_count);
+	int row_count = 1;
+	row_line[row_count - 1] = file_board->carray;
+	char* ckNull= NULL;
+	while (1) {
+		if (row_count >= max_line_count) {
+			max_line_count *= 2;
+			row_line = (long long*)realloc(row_line, sizeof(long long) * max_line_count);
+		}
+		strtok_s(row_line[row_count - 1], "\n", &row_line[row_count]);
+		ckNull = row_line[row_count];
+		if (*ckNull == NULL)
+			break;
+		row_count++;
+	}
+	
+	for (int i = 0; i < row_count; i++) {
+		printf("%d Row : %s\n", i, row_line[i]);
+	}
+	printf("수정 하고자 하는 행을 입력하세요 : ");
+	scanf_s("%d", &selectNum);
+	if (selectNum < 0 || selectNum >= row_count) {
+		printf("보기에 존재하지 않는 행입니다.\n");
+		return;
+	}
+	//선택받은 행을 기준으로 열 파싱
+	int selectRow = selectNum;
+	int col_count = 1;
+	long long* col_line = (long long*)malloc(sizeof(long long) * max_line_count);
+
+	col_line[col_count - 1] = row_line[selectRow];
+
+	while (1) {
+		if (col_count >= max_line_count) {
+			max_line_count *= 2;
+			col_line = (long long*)realloc(col_line, sizeof(long long) * max_line_count);
+		}
+		strtok_s(col_line[col_count - 1], "|", &col_line[col_count]);
+		ckNull = col_line[col_count];
+		if (*ckNull == NULL)
+			break;
+		col_count++;
+	}
+
+	for (int i = 0; i < col_count; i++) {
+		printf("%d 번째 열의 문자열 : %s\n", i, col_line[i]);
+	}
+
+	printf("수정 하고자 하는 열을 입력하세요 : ");
+	scanf_s("%d", &selectNum);
+	if (selectNum < 0 || selectNum >= col_count) {
+		printf("보기에 존재하지 않는 행입니다.\n");
+		return;
+	}
+	//2
+	int selectCol = selectNum;
+	int max_words = 1024;
+	char change_word;
+	char* change_words = (char*)malloc(sizeof(char) * max_words);//수정할문자열
+	printf("(%s) 수정 할 값 입력(enter:입력완료) : ", col_line[selectCol]);
+	while (getchar() != '\n');
+	for (int i = 0; ; i++) {
+		if (i >= max_words) {
+			max_words *= 2;
+			change_words = (char*)realloc(change_words, sizeof(char) * max_words);
+		}
+		change_word = getchar();
+		if (change_word == '\n') {
+			change_words[i] = '\0';
+			break;
+		}
+		change_words[i] = change_word;
+	}
+	//3 기존 파일 수정
+	//file_board->carray  <--참조   row_line  <--참조  col_line
+	int max_file_words = 1024;
+	char* change_file_words = (char*)malloc(sizeof(char) * max_file_words);	
+	char* ptr_ch_file_words = change_file_words;
+	char* ptr_carray = file_board->carray;
+	int current_count = 0;
+
+	for (int row = 0; row < row_count; row++) {//행
+		if (row == selectRow) {//수정할 행일 경우
+			for (int col = 0; col < col_count; col++) {//열
+				if (col == selectCol) {//수정할 열일 경우
+					for (int word_count = 0; ; word_count++, current_count++) {
+						if (current_count >= max_file_words)
+							change_file_words = file_words_add(&max_file_words, change_file_words);
+						if (change_words[word_count] == '\0') {
+							ptr_ch_file_words[word_count] = '|';
+							word_count++;
+							current_count++;
+							if (current_count >= max_file_words)
+								change_file_words = file_words_add(&max_file_words, change_file_words);
+							ptr_ch_file_words = &ptr_ch_file_words[word_count];
+							//기존 carray의 위치를 옮겨줘야함
+							for (int carray = 0; ; carray++) {
+								if (ptr_carray[carray] == '\0') {
+									ptr_carray = &ptr_carray[carray + 1];
+									break;
+								}
+							}
+							break;
+						}
+						ptr_ch_file_words[word_count] = change_words[word_count];
+					}
+				}
+				else {//수정할 열이 아닌경우
+					for (int word_count = 0; ; word_count++, current_count++) {
+						if (current_count >= max_file_words)
+							change_file_words = file_words_add(&max_file_words, change_file_words);
+						if (ptr_carray[word_count] == '\0') {
+							ptr_ch_file_words[word_count] = '|';
+							word_count++;
+							current_count++;
+							if (current_count >= max_file_words)
+								change_file_words = file_words_add(&max_file_words, change_file_words);
+							ptr_ch_file_words = &ptr_ch_file_words[word_count];
+							ptr_carray = &ptr_carray[word_count];
+							break;
+						}
+						ptr_ch_file_words[word_count] = ptr_carray[word_count];
+					}
+				}
+			}
+			//열의 끝이라면
+			ptr_ch_file_words[-1] = '\n';
+		}
+		else {	//수정할 행이 아닌경우
+			for (int word_count=0; ; word_count++, current_count++) {
+				if (current_count >= max_file_words)
+					change_file_words = file_words_add(&max_file_words, change_file_words);
+				if (ptr_carray[word_count] == '\0') {//행의 끝
+					ptr_ch_file_words[word_count] = '\n';
+					word_count++;
+					current_count++;
+					if (current_count >= max_file_words)
+						change_file_words = file_words_add(&max_file_words, change_file_words);
+					ptr_ch_file_words = &ptr_ch_file_words[word_count];
+					ptr_carray = &ptr_carray[word_count];
+					break;
+				}
+				if (ptr_ch_file_words[word_count] == NULL) {
+
+				}
+				ptr_ch_file_words[word_count] = ptr_carray[word_count];
+			}
+		}
+	}
+	change_file_words[current_count] = '\0';
+	
+	printf("수정이 완료 되었습니다.\n");
+	printf("%s\n", change_file_words);
+	
+	//동적할당 해제와 더불어 파일저장
+	free(file_board->carray);
+	file_board->carray = change_file_words;
+	free(row_line);
+	free(col_line);
+	free(change_words);
+
+	
+
+
+
 }
 
 void File_System_Compony_main() {
@@ -642,7 +823,7 @@ void File_System_Compony_main() {
 	*/
 
 	//파일 내용 수정
-
+	File_System_Update_File(&pFile, "Employee information", &file_board);
 }
 
 //1. 중복성 문제점
