@@ -13,9 +13,12 @@ void main() {
 	//File_HDD_main();
 	//win_dir_main();
 
-	File_System_Compony_main();
+	//File_System_Compony_main();
+	File_System_Redundancy();
 	
 	
+	
+
 
 	
 

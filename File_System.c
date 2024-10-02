@@ -164,300 +164,29 @@ void File_HDD_main() {
 	파일의 데이터들의 공간을 마련해준다
 */
 
-/*
-	C언어에서 제공하는 stdio.h파일에 있는 FILE 입출력 시스템은 OS에게 직접 요청을 하여 HDD혹은 SSD에 파일의 주소를 받아와서 사용하는 형식이다.
+	//C언어에서 제공하는 stdio.h파일에 있는 FILE 입출력 시스템은 OS에게 직접 요청을 하여 HDD혹은 SSD에 파일의 주소를 받아와서 사용하는 형식이다.
 
-*/
-/*
-//1. 명령문 받기 vi test
-//2. test라는 파일 있는지 확인 후 없으면 생성 있으면 파일 열기
-//3. Edit 편집기에서 파일을 열거나 생성 명령어 모드로 처음 진행
-//4. i버튼 누를 시 입력모드 
-//5. esc버튼 누를 시 명령어모드
-
-typedef struct Copy_File_Memory {
-	int size;
-	int capacity;
-	char* carray;
-}Copy_File_Memory;
-
-void gotoxy(int x, int y) {
-	COORD coord;
-	coord.X = x;
-	coord.Y = y;
-	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
-}
-
-void drawBorders(int width, int height) {
-	//상단 하단 경계
-	for (int i = 0; i < width; i++) {
-		gotoxy(i, 0);         // 상단 경계
-		printf("-");
-		gotoxy(i, height - 1); // 하단 경계
-		printf("-");
-	}
-	// 좌측 및 우측 경계 그리기
-	for (int i = 0; i < height; i++) {
-		gotoxy(0, i);         // 좌측 경계
-		printf("|");
-		gotoxy(width - 1, i); // 우측 경계
-		printf("|");
-	}
-	gotoxy(0, 0);  // 커서를 상단 좌측으로 이동
-}
-
-void display_FileArea(Copy_File_Memory* File_List) {
-	gotoxy(2, 2);
-	for (int i = 0; ; i++) {
-		printf("%c", File_List->carray[i]);
-		if (File_List->carray[i] == EOF)
-			break;
-	}	
-}
-
-void display_CommendArea() {
-	gotoxy(2, 25);
-	printf("\n<명령어 모드>\n");
-	printf("1.입력모드, 2.저장, 그 외 나가기  :  ");
-}
-
-void init_File_Memory_List(Copy_File_Memory* list) {
-	list->size = 0;
-	list->capacity = 1024; //초기 메모리할당양
-	list->carray = (char*)malloc(sizeof(char) * list->capacity);
-}
-
-void Add_File_Memory_List(Copy_File_Memory* list) {
-	list->capacity *= 2;
-	list->carray = (char*)realloc(list->carray, sizeof(char) * list->capacity);
-}
-
-int Win_Dir_Search(char *a, char *dir_list[]) {//window api를 이용한 파일 탐색
-	WIN32_FIND_DATAW findFileData;
-	HANDLE hFind = FindFirstFileA(a, &findFileData);
-	int fileNum = 0;
-	char* c;
-	int i = 0;
-	int j = 0;
-	char list_name[100];
-	if (hFind == INVALID_HANDLE_VALUE) {
-		printf("ERROR : %lu\n", GetLastError());
-		printf("No files found.\n");
-	}
-	else {
-		do {
-			if (strcmp(findFileData.cFileName, ".") != 0) {
-				fileNum++;
-				//printf("%d. file : ",fileNum);
-				c = findFileData.cFileName;
-				while (1) {
-					if (c[i] <= -1)
-						break;
-					else if (c[i] == 0) {
-						i++;
-					}
-					list_name[j] = c[i];
-					j++;
-					//printf("%c", c[i]);
-					i++;
-				}
-				i = 0;
-				j = 0;
-			}
-			if (list_name[0] >= -1) {
-				dir_list[fileNum] = (char*)malloc(sizeof(char) * 100);
-				strcpy_s(dir_list[fileNum], sizeof(char) * 100, list_name);
-			}
-		} while (FindNextFile(hFind, &findFileData) != 0);
-		FindClose(hFind);
-	}
-
-	//printf("파일 개수 : %d\n", fileNum);
-	return fileNum;
-
-}
-
-#define FILE_NAME_LEN 50
-
-#define ESC 27
-#define UP_ARROW 72
-#define DOWN_ARROW 80
-#define LEFT_ARROW 75
-#define RIGHT_ARROW 77
-
-void set_Cursor_Position(int x, int y) {//입력모드 커서 움직이기
-	COORD pos = { x,y };
-	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
-}
-
-void File_Sys_Input(FILE* pFile, Copy_File_Memory* File_List) {
-	int keyboard;
-	int cursorX = 0 , cursorY = 0;
-	while (1) {
-		system("cls");
-		for (int i = 0; ; i++) {
-			printf("%c", File_List->carray[i]);
-			if (File_List->carray[i] == EOF)
-				break;
-		}
-		printf("\n<입력 모드>\n");
-		printf("명령어 모드로 나갈길 원할 시 ESC\n");
-		
-		while (1) {
-			set_Cursor_Position(cursorX, cursorY);
-			keyboard = _getch();
-			switch(keyboard){
-				case ESC:
-					return;
-				case UP_ARROW:
-					if (cursorY > 0)cursorY--;
-					break;
-				case DOWN_ARROW:
-					cursorY++;
-					break;
-				case LEFT_ARROW:
-					if (cursorX > 0) cursorX--;
-					break;
-				case RIGHT_ARROW:
-					cursorX++;
-					break;
-			}
-		}
-	}
-}
-
-void File_Sys_Edit(FILE* pFile, char* fileName, int keyboard, Copy_File_Memory* File_List) {
-	int width = 150;
-	int height = 25;
-	COORD bufferSize = { width, height };
-	SetConsoleScreenBufferSize(GetStdHandle(STD_OUTPUT_HANDLE), bufferSize);
-
-	char NameFile[FILE_NAME_LEN];
-	strcpy_s(NameFile, sizeof(char) * FILE_NAME_LEN, "FileSystem\\");
-	strcat_s(NameFile, sizeof(char) * FILE_NAME_LEN, fileName);
-
-	
-	switch (keyboard) {
-		case 1:	//기존 파일 읽어오기
-			printf("열고자 하는 파일 : %s\n", fileName);
-			fopen_s(&pFile, NameFile, "r");
-			break;
-		case 2: //새로운 파일 생성하기
-			break;
-		default : //종료
-			break;
-	}
-	char c;
-	//메모리에 파일 덮어 씌우는 과정
-	for (int i = 0;; i++) {
-		if (File_List->capacity <= i) {
-			Add_File_Memory_List(File_List);
-		}
-		File_List->carray[i] = fgetc(pFile);
-		if (File_List->carray[i] == EOF)
-			break;
-	}
-
-	while (1) {
-		system("cls");
-		//메모리에 덮어씌워진 파일 출력함
-		// 경계 그리기
-		drawBorders(width, height);
-		// 파일 영역 및 상태 영역 출력
-		display_FileArea(File_List);
-		display_CommendArea();
-		scanf_s("%d", &keyboard);
-		switch (keyboard) {
-			case 1:	//파일 입력모드
-				File_Sys_Input(pFile, File_List);
-				break;
-			case 2: //파일 저장
-				break;
-			default : //파일에서 나가기
-				break;
-		}
-	}
-
-
-	
-}
-
-void File_Sys_main() {
-	Copy_File_Memory File_Memory;
-	init_File_Memory_List(&File_Memory);
-	char current_dir[1024];
-	char* list_dir[100];
-	for (int i = 0; i < 100; i++) {
-		list_dir[i] = NULL;
-	}
-	int fileNum;
-	strcpy_s(current_dir, sizeof(char) * 1024, "C:\\Users\\NSH\\Documents\\Visual_studio_pro\\OS_System_programing.c\\FileSystem\\*");
-	fileNum = Win_Dir_Search(current_dir, list_dir);
-
-	
-	//	for (int i = 1; i <=100; i++) {
-	//		if (list_dir[i] == NULL)
-	//			break;
-	//		printf("%d. file : %s\n", i, list_dir[i]);
-	//	}
-	
-
-	char fileName[FILE_NAME_LEN];
-	char c;
-	int i;
-	FILE* pFile = NULL;
-
-	int selectKeyboard = 0;
-
-	while (1) {
-		system("cls");
-		printf("현재 디렉토리 : C:\\Users\\NSH\\Documents\\Visual_studio_pro\\OS_System_programing.c\\FileSystem\n");
-		printf("디렉토리 목록\n");
-		for (int i = 1; i <= 100; i++) {
-			if (list_dir[i] == NULL)
-				break;
-			printf("%d. file : %s\n", i, list_dir[i]);
-		}
-		printf("\n");
-		printf("1. 파일열기, 2. 파일생성, 3.파일삭제, 그 외 종료  :  ");
-		scanf_s("%d", &selectKeyboard);
-
-		switch (selectKeyboard) {
-			case 1:
-				printf("열고 싶은 파일 목록에서 선택 : ");
-				scanf_s("%d", &selectKeyboard);
-				if (selectKeyboard <= 0 || selectKeyboard > fileNum) {
-					printf("목록에 존재하지 않는 파일입니다.\n\n");
-					break;
-				}
-				File_Sys_Edit(pFile, list_dir[selectKeyboard], 1, &File_Memory);
-				break;
-			case 2:
-				printf("만들고 싶은 파일 입력(기존에 있는 파일과 이름이 겹치면 안됨) : ");
-				break;
-			case 3:
-				printf("삭제하고 싶은 파일 목록에서 선택 : ");
-				scanf_s("%d", &selectKeyboard);
-				if (selectKeyboard <= 0 || selectKeyboard > fileNum) {
-					printf("목록에 존재하지 않는 파일입니다.\n\n");
-					break;
-				}
-				break;
-			default :
-				return;
-		}
-	}
-
-	
-}
-//너무 어려워서 포기
-*/
 
 
 /*
 	그럼 이 파일시스템이 등장하고부터는 어떤 데이터든 파일의 개념으로써 관리를 진행해왔다.
-	간단한 데이터라도 파일로써 관리를 진행해왔고 이러한 방식은 시간이 지날수록 비효율적이게 되었다.
-	이 불편한 점들을 알아보겠다.
+	-논리적 개념 단계로써 파일을 어떻게 저장할지 생성할지-
+	필드 - 한 개의 의미(ex 이름, 나이, 성별 같은 한 개의 의미를 가진 데이터를 모은것)
+	레코드 - 의미들의 연관성을 가지고 묶어놓은 형태(ex 이름, 학번, 학과 라는 필드를 통해서 학생정보 라는 묶음을 만들 수 있음)
+	파일 - 연관성을 가진 레코드들의 집합체 레코드가 최소 1개이상으로 나열된것(ex 학생정보 파일 이라면 학생정보레코드의 데이터들이 1개이상 나열)
+
+	그리고 이에 따른 논리적 파일 개념뿐만 아니라 실제로 어떻게 물리적으로 저장할지에 대한것도 생각하게 되었지
+	그 생각의 3가지 핵심 키워드가 존재해 저장매체, 콘텐츠, 구조로 나눌 수 있지
+	-물리적 단계 3가지 키워드-
+	저장매체(where) - 파일을 어디에 저장할까? HDD? SSD? CD? 테이프? 그리고 순차적 접근(HDD)으로 할까? 직접 접근(SSD)을 할까? 에 대한 고민
+	콘텐츠(what) - 파일의 종류는 또 얼마나 다양해 .txt, .docs, .pdf, .c, .exe, .obj 이 처럼 데이터,실행,워크 파일 같은 여러 종류로 나뉠 수 있는 고민
+	구조(How) - 그럼 이제 이 자질구래한 것들의 결정이 끝났으니 최종적으로 어떻게 저장할까? 직접접근? 순차접근? 색인순차? 링파일? 해싱?
+
+
+	이런 논리적인관점과 물리적인 관점에서 파일을 쌓아 데이터를 저장하고 처리하게 되면서 발전을 해오다 결국
+	이 파일 시스템이 굉장히 비효율하다는것을 깨닫는 시점이 오게 되지
+	그 시점에 등장한게 데이터베이스야
+	그럼 왜 파일 시스템이 비효율적이었을까?
 
 	회사의 직원을 관리하는 파일을 만든다고 가정
 	1. 직원정보 - 이름, 생년월일, 연락처, 주소, 입사일, 직위 및 부서
@@ -466,6 +195,7 @@ void File_Sys_main() {
 	4. 평가기록 - 평가주기, 평가점수, 상사 피드백, 목표달성여부, 교육 및 개발 필요사항
 	5. 휴가신청 - 휴가 유형, 시작일 및 종료일, 신청날짜, 승인 상태, 사용가능 휴가 일수
 */
+
 typedef struct File_ArrayList {
 	int capacity;
 	char* carray;
@@ -481,6 +211,31 @@ void File_ArrayList_init(File_ArrayList* file_board, int keyboard) {
 			file_board->capacity *= 2;
 			file_board->carray = (char*)realloc(file_board->carray, sizeof(char) * file_board->capacity);
 			break;
+	}
+}
+
+//파일 이름 설정
+inline void File_Name_List_fun(long long* File_List_Name, int file_num) {
+	for (int i = 0; i < file_num; i++) {
+		switch (i) {
+			case 0:
+				File_List_Name[i] = "Employee information";
+				break;
+			case 1:
+				File_List_Name[i] = "work record";
+				break;
+			case 2:
+				File_List_Name[i] = "salary information";
+				break;
+			case 3:
+				File_List_Name[i] = "Evaluation record";
+				break;
+			case 4:
+				File_List_Name[i] = "Request for vacation";
+				break;
+			default: 
+				break;
+		}
 	}
 }
 
@@ -529,12 +284,12 @@ void File_System_Read_File(FILE** pFile, char readFile[], File_ArrayList* file_b
 	}
 
 	//기존 파일 출력
-	printf("기존 파일 %s 내용\n",readFile);
+	//printf("기존 파일 %s 내용\n",readFile);
 	for (int i = 0; ; i++) {
-		printf("%c", file_board->carray[i]);
+		//printf("%c", file_board->carray[i]);
 		if (file_board->carray[i] == EOF)break;
 	}
-	printf("\n");
+	//printf("\n");
 
 	fclose(*pFile);
 }
@@ -595,10 +350,11 @@ void File_System_Write_File(FILE** pFile, char writeFile[], File_ArrayList* file
 	fclose(*pFile);
 }
 
-//인라인 함수
+//파일 동적할당하는 인라인 함수(스택에 올라가지 않음)
 inline char* file_words_add(int* maximum, char* change_file_words) {
 	*maximum *= 2;
 	char* new_words = (char*)realloc(change_file_words, sizeof(char) * *maximum);
+	//free(change_file_words);
 	if (new_words == NULL) {
 		printf("메모리 할당 실패");
 		exit(1);
@@ -769,16 +525,13 @@ void File_System_Update_File(FILE** pFile, char updateFile[], File_ArrayList* fi
 					ptr_carray = &ptr_carray[word_count];
 					break;
 				}
-				if (ptr_ch_file_words[word_count] == NULL) {
-
-				}
 				ptr_ch_file_words[word_count] = ptr_carray[word_count];
 			}
 		}
 	}
 	change_file_words[current_count] = '\0';
 	
-	printf("수정이 완료 되었습니다.\n");
+	printf("파일이 성공적으로 수정이 완료 되었습니다.\n");
 	printf("%s\n", change_file_words);
 	
 	//동적할당 해제와 더불어 파일저장
@@ -788,10 +541,15 @@ void File_System_Update_File(FILE** pFile, char updateFile[], File_ArrayList* fi
 	free(col_line);
 	free(change_words);
 
-	
+	//r모드로 열어놓은 pFile을 해제 이후 w모드로 다시 열어서 기존 파일내용 없애고 덮어씌우는 작업 진행
+	//r : 읽기만 가능(파일없을시 에러)   w : 쓰기만가능(파일없을시 생성, 파일 있을시 내용 삭제)
+	fclose(*pFile);
+	fopen_s(pFile, FileName, "w");
+	//마지막 문자열 '\0'까지 파일에 작성
+	fputs(file_board->carray, *pFile);
 
-
-
+	free(file_board->carray);
+	fclose(*pFile);
 }
 
 void File_System_Compony_main() {
@@ -811,7 +569,7 @@ void File_System_Compony_main() {
 	}
 
 	//기존 파일 읽기
-	File_System_Read_File(&pFile, "Employee information", &file_board);
+	File_System_Read_File(&pFile, "Employee information2", &file_board);
 
 	/*
 	//파일 내용 신규 작성
@@ -823,10 +581,71 @@ void File_System_Compony_main() {
 	*/
 
 	//파일 내용 수정
-	File_System_Update_File(&pFile, "Employee information", &file_board);
+	File_System_Update_File(&pFile, "Employee information2", &file_board);
+}
+// 파일 시스템의 불편한점들을 함수들로 표현해보자
+//1. 중복성 문제점
+void File_System_Redundancy() {
+	//5개의 파일에는 5명의 이름을 토대로 정보들이 저장되어 있다. 그런데 만약 이름을 바꾸는 문제가 생긴다면?
+	FILE* pFile = NULL;
+	int file_num = 5;
+	int selectNum;
+	long long* File_Name = (long long)malloc(sizeof(long long) * file_num);
+	File_ArrayList* file_board = (File_ArrayList*)malloc(sizeof(File_ArrayList)*file_num);
+	File_Name_List_fun(File_Name, file_num);
+	for (int i = 0; i < file_num; i++) {
+		File_ArrayList_init(&file_board[i], 1);
+		File_System_Read_File(&pFile, File_Name[i], &file_board[i]);
+	}
+	printf("수정하고자 하는 파일이 무엇인가요? \n");
+	for (int i = 0; i < file_num; i++) {
+		printf("%d번 : %s\n", i,File_Name[i]);
+	}
+	printf("선택해주세요 : ");
+	scanf_s("%d", &selectNum);
+	printf("수정할 파일 : %s\n", File_Name[selectNum]);
+	File_System_Update_File(&pFile, File_Name[selectNum], &file_board[selectNum]);
+	//파일 1에서 이름을 바꿀 시 파일 2,3,4,5에서도 동일한 이름을 변경해줘야 한다.
 }
 
-//1. 중복성 문제점
-void File_System_Duplicate() {
+//해쉬테이블 생성
+//key값 Name, DOB, Contact, Address, HireDate, Position, Department
+//CheciIn, Checkout, Workdays, Tardiness, Absence, Overtime
+//Basesalary, Allowance, Taxdeduction, Yearend, Bonus, Incentive
+//Reviewcycle, Score, Feedback, Goalachieved, Trainingneeds
+//Leavetype, Startdate, Enddate, Requestdate, Availableleave
+
+
+//2. 데이터 불일치
+void File_System_Inconsistency() {
+	//중복성이 발생해서 모두 수정해주지 않으면 발생함
+	//1, 2파일이 일치하지 않는 상황이 생김
+	File_System_Redundancy();
 	
+
+}
+
+//3. 데이터 접근성의 제한
+void File_System_Limited_Data_Access() {
+
+}
+
+//4. 데이터 동시 접근의 어려움
+void File_System_Concurrency_Issues() {
+
+}
+
+//5. 데이터 통합의 어려움
+void File_System_Data_Integration_Challenges() {
+
+}
+
+//6. 데이터 보안의 부족
+void File_System_Lack_of_Data_Security() {
+
+}
+
+//7. 백업 및 복구의 어려움
+void File_System_Backup_and_Recovery_Challenges() {
+
 }
