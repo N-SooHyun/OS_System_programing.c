@@ -239,6 +239,8 @@ inline void File_Name_List_fun(long long* File_List_Name, int file_num) {
 	}
 }
 
+
+
 //파일 새로 생성
 FILE* File_System_Create_File(FILE** pFile, char newFile[]) {
 	char FileName[100];
@@ -583,6 +585,15 @@ void File_System_Compony_main() {
 	//파일 내용 수정
 	File_System_Update_File(&pFile, "Employee information2", &file_board);
 }
+
+//해쉬테이블 생성
+//key값 Name, DOB, Contact, Address, HireDate, Position, Department
+//CheciIn, Checkout, Workdays, Tardiness, Absence, Overtime
+//Basesalary, Allowance, Taxdeduction, Yearend, Bonus, Incentive
+//Reviewcycle, Score, Feedback, Goalachieved, Trainingneeds
+//Leavetype, Startdate, Enddate, Requestdate, Availableleave
+
+
 // 파일 시스템의 불편한점들을 함수들로 표현해보자
 //1. 중복성 문제점
 void File_System_Redundancy() {
@@ -608,44 +619,42 @@ void File_System_Redundancy() {
 	//파일 1에서 이름을 바꿀 시 파일 2,3,4,5에서도 동일한 이름을 변경해줘야 한다.
 }
 
-//해쉬테이블 생성
-//key값 Name, DOB, Contact, Address, HireDate, Position, Department
-//CheciIn, Checkout, Workdays, Tardiness, Absence, Overtime
-//Basesalary, Allowance, Taxdeduction, Yearend, Bonus, Incentive
-//Reviewcycle, Score, Feedback, Goalachieved, Trainingneeds
-//Leavetype, Startdate, Enddate, Requestdate, Availableleave
-
 
 //2. 데이터 불일치
 void File_System_Inconsistency() {
 	//중복성이 발생해서 모두 수정해주지 않으면 발생함
 	//1, 2파일이 일치하지 않는 상황이 생김
 	File_System_Redundancy();
-	
 
 }
 
 //3. 데이터 접근성의 제한
 void File_System_Limited_Data_Access() {
-
+	//특정 파일에 데이터를 찾으려면 파일을 순차적으로 검색하거나 특정 위치를 지정해서 접근해야하는 비효율성 발생
+	//DB는 쿼리를 제공하여 검색기능으로 찾으면 쉽게 찾아짐
 }
 
 //4. 데이터 동시 접근의 어려움
 void File_System_Concurrency_Issues() {
-
+	//여러 사용자가 하나의 파일에 동시에 접근하고 수정하는것이 매우 어려움
+	//또한 동시에 파일을 수정하면 손실이나 충돌이 발생할 수 있어서 한 개의 파일에 한 사람만 접근이 가능
+	//DB는 트랜잭션 commit과 같은 기능들을 통해서 동시접근이 가능
 }
 
 //5. 데이터 통합의 어려움
 void File_System_Data_Integration_Challenges() {
-
+	//데이터를 여러 파일에 나눠서 저장하기에 다른 파일에서 데이터를 통합하기 어려움
+	//DB 관계형 데이터 모델을 토대로 연관 관계로 효율적인 관리가 용이
 }
 
 //6. 데이터 보안의 부족
 void File_System_Lack_of_Data_Security() {
-
+	//파일 단위로 접근 권한을 부여가 가능하나 세부적인 데이터 보안기능이 부족하여 파일단위 보안 외 세밀한 관리는 어려움
+	//DB 사용자별 권한제어기능으로 관리해줌
 }
 
 //7. 백업 및 복구의 어려움
 void File_System_Backup_and_Recovery_Challenges() {
-
+	//백업과 복구가 어려움 파일로 데이터가 여러개 분산되어있으면 일관성있는 백업도 손실시 복구도 복잡
+	//DB 자동 백업 및 복구 기능
 }
