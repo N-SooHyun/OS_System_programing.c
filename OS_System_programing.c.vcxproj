@@ -130,6 +130,7 @@
     <ClCompile Include="directory_file.c" />
     <ClCompile Include="File_System.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="sync_async.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

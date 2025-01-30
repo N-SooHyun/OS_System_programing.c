@@ -24,5 +24,8 @@
     <ClCompile Include="directory_file.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="sync_async.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

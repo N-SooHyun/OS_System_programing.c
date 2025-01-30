@@ -14,7 +14,11 @@ void main() {
 	//win_dir_main();
 
 	//File_System_Compony_main();
-	File_System_Redundancy();
+	//File_System_Redundancy();
+
+
+
+	ASync_process();
 	
 	
 	
